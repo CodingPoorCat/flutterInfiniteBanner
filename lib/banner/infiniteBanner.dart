@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 class InfiniteBanner extends StatefulWidget{
-  final List<Widget> data;
+  final List<Map> data;
+  final IndicatorBuild indicator;
+  final OnClick onClick;
   final int delayTime,duration,count;
   InfiniteBanner({
     Key key,
     @required this.data,
+    this.indicator,
+    this.onClick,
     this.delayTime = 2000,
     this.duration = 3000,
     this.count = 30
@@ -26,7 +30,7 @@ class InfiniteBannerState extends State<InfiniteBanner>{
   // 此处的滚动是指controller.nextPage()
   bool isRoll = false;
   int currentPage,position;
-  List<Widget> bannerList = [];
+  List<Map> bannerList = [];
   // 重写initState，在生命周期里，initState只会执行一次
   void initState(){
     super.initState();
@@ -44,10 +48,10 @@ class InfiniteBannerState extends State<InfiniteBanner>{
     );
   }
   void onPageChanged(index){
-    currentPage = index;
-    setState(() {});
+    setState(() {currentPage = index;});
   }
   // 数据初始化
+  // 在第一张banner前插入最后一张，在最后一张banner后插入第一张
   void initData(){
     var first = widget.data.first;
     var last = widget.data.last;
@@ -73,14 +77,16 @@ class InfiniteBannerState extends State<InfiniteBanner>{
   }
   // 轮播点
   Widget _indicator(){
-    return Align(
+    return widget.indicator == null ? Align(
       alignment: FractionalOffset.bottomCenter,
         child:Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children:_dotList()
         ),
-    );
+    ):widget.indicator(currentPage,getCount());
   }
+
+  // 默认的轮播点样式
   List<Widget>  _dotList(){
     List<Widget> dotList = [];
     int count = getCount();
@@ -101,7 +107,6 @@ class InfiniteBannerState extends State<InfiniteBanner>{
   // 轮播图片Widget
   Widget _bannerView() {
     return Listener(
-      
       // 当屏幕被按压
       onPointerDown: (evt){
         isRoll = true;
@@ -118,7 +123,7 @@ class InfiniteBannerState extends State<InfiniteBanner>{
         onNotification: (scrollNotification){
           // 判断滚动是否停止或者是用户改变了滚动方向
           if (scrollNotification is ScrollEndNotification || scrollNotification is UserScrollNotification) {
-            print(currentPage);
+            // 当手动滑动到0时，主动跳转到最后一张banner（不是）
             if(currentPage == 0) {
              setState(() {
                 currentPage = getCount();
@@ -140,8 +145,12 @@ class InfiniteBannerState extends State<InfiniteBanner>{
           onPageChanged: onPageChanged,
           childrenDelegate:SliverChildBuilderDelegate((context,index){
             int current = index % bannerList.length;
-            Widget render  =  bannerList[current];
+            Widget render = Image.network(bannerList[current]['url'],fit: BoxFit.cover);
+            // Widget render  =   bannerList[current];
               return GestureDetector(
+                onTap: (){
+                  widget.onClick(current, bannerList[current]);
+                },
                 child: render,
               );
             } ,
@@ -151,3 +160,10 @@ class InfiniteBannerState extends State<InfiniteBanner>{
     ));
   }
 }
+
+
+// 自定义指示器
+typedef Widget IndicatorBuild(int position,int count);
+
+//点击监听
+typedef void OnClick(int position, Map banner);
